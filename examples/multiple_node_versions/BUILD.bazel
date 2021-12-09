@@ -1,7 +1,7 @@
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
 load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
 load(":defs.bzl", "my_nodejs")
-load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary", "nodejs_test")
+load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary", "nodejs_binary_toolchains", "nodejs_binary_toolchains_test", "nodejs_test")
 
 # Trivial test fixture: a nodejs program that writes to a file
 write_file(
@@ -107,6 +107,38 @@ nodejs_binary(
     node = "@node16_linux_amd64//:node_toolchain",
 )
 
+nodejs_binary(
+    name = "main_none",
+    entry_point = "binary_version.js",
+    # node = "@node16_linux_amd64//:node_toolchain",
+    # toolchain = "@node16_linux_amd64//:node_toolchain",
+    # node = "@node16_linux_amd64//:node_toolchain",
+)
+
+nodejs_binary_toolchains(
+    name = "main_multiple",
+    entry_point = "binary_version.js",
+    # toolchains = ["@node16_linux_amd64//:node_toolchain","@node15_linux_amd64//:node_toolchain",],
+    toolchains = [
+        # Is there a good way to resolve the naming for the version chosen for each select statement?
+        # ideally able to produce the target name main_multiple_test_@node16_linux_amd64
+        # Is there a different outcome that would be better?
+        select({
+            # "@node16_linux_amd64//:node_toolchain"
+            "@bazel_tools//src/conditions:linux_x86_64": "@node16_linux_amd64//:node_toolchain",
+            "@bazel_tools//src/conditions:darwin": "@node16_darwin_amd64//:node_toolchain",
+            "@bazel_tools//src/conditions:windows": "@node16_windows_amd64//:node_toolchain",
+        }),
+        select({
+            # "@node15_linux_amd64//:node_toolchain"
+            "@bazel_tools//src/conditions:linux_x86_64": "@node15_linux_amd64//:node_toolchain",
+            "@bazel_tools//src/conditions:darwin": "@node15_darwin_amd64//:node_toolchain",
+            "@bazel_tools//src/conditions:windows": "@node15_windows_amd64//:node_toolchain",
+        }),
+    ],
+    # toolchains = ["@node16_linux_amd64//:node_toolchain","@node15_linux_amd64//:node_toolchain",],
+)
+
 nodejs_test(
     name = "main_default_test",
     entry_point = "test_default.js",
@@ -122,4 +154,27 @@ nodejs_test(
     name = "main_16_test",
     entry_point = "test_v16.js",
     node = "@node16_linux_amd64//:node_toolchain",
+)
+
+# this will fail one the node15 because the test checks for node16
+nodejs_binary_toolchains_test(
+    name = "main_multiple_test",
+    entry_point = "test_v16.js",
+    toolchains = [
+        # Is there a good way to resolve the naming for the version chosen for each select statement?
+        # ideally able to produce the target name main_multiple_test_@node16_linux_amd64
+        # Is there a different outcome that would be better?
+        select({
+            # "@node16_linux_amd64//:node_toolchain"
+            "@bazel_tools//src/conditions:linux_x86_64": "@node16_linux_amd64//:node_toolchain",
+            "@bazel_tools//src/conditions:darwin": "@node16_darwin_amd64//:node_toolchain",
+            "@bazel_tools//src/conditions:windows": "@node16_windows_amd64//:node_toolchain",
+        }),
+        select({
+            # "@node15_linux_amd64//:node_toolchain"
+            "@bazel_tools//src/conditions:linux_x86_64": "@node15_linux_amd64//:node_toolchain",
+            "@bazel_tools//src/conditions:darwin": "@node15_darwin_amd64//:node_toolchain",
+            "@bazel_tools//src/conditions:windows": "@node15_windows_amd64//:node_toolchain",
+        }),
+    ],
 )

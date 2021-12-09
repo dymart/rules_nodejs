@@ -1,7 +1,5 @@
 workspace(name = "multiple_node_versions")
 
-# load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-
 # http_archive(
 #     name = "rules_nodejs",
 #     sha256 = "a54a01b883beff66da057a1a9afc3be83de566d8ba78f5139f9b370026af5868",

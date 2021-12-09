@@ -250,8 +250,14 @@ fi
     # when building the image as that will reflect the selected --platform.
     node_tool_files = ctx.files.node[:]
 
+    if ctx.attr.toolchain:
+        node_tool_files.extend(ctx.attr.toolchain[platform_common.ToolchainInfo].nodeinfo.tool_files)
+    else:
+        # toolchain = ctx.toolchains["@rules_nodejs//nodejs:toolchain_type"].nodeinfo
+        node_tool_files.extend(ctx.toolchains["@build_bazel_rules_nodejs//toolchains/node:toolchain_type"].nodeinfo.tool_files)
+
     # this should be resolved the same as above
-    node_tool_files.extend(ctx.toolchains["@build_bazel_rules_nodejs//toolchains/node:toolchain_type"].nodeinfo.tool_files)
+    # node_tool_files.extend(ctx.toolchains["@build_bazel_rules_nodejs//toolchains/node:toolchain_type"].nodeinfo.tool_files)
 
     node_tool_files.append(ctx.file._link_modules_script)
     node_tool_files.append(ctx.file._runfile_helpers_bundle)
@@ -267,7 +273,7 @@ fi
     runfiles.extend(ctx.files._bash_runfile_helper)
     runfiles.append(ctx.outputs.loader_script)
     runfiles.append(ctx.outputs.require_patch_script)
-    runfiles.append(ctx.file._repository_args)
+    # runfiles.append(ctx.file._repository_args)
 
     # First replace any instances of "$(rlocation " with "$$(rlocation " to preserve
     # legacy uses of "$(rlocation"
@@ -316,7 +322,7 @@ fi
         "TEMPLATED_loader_script": _to_manifest_path(ctx, ctx.outputs.loader_script),
         "TEMPLATED_modules_manifest": _to_manifest_path(ctx, node_modules_manifest),
         "TEMPLATED_node_patches_script": _to_manifest_path(ctx, ctx.file._node_patches_script),
-        "TEMPLATED_repository_args": _to_manifest_path(ctx, ctx.file._repository_args),
+        # "TEMPLATED_repository_args": _to_manifest_path(ctx, ctx.file._repository_args),
         "TEMPLATED_require_patch_script": _to_manifest_path(ctx, ctx.outputs.require_patch_script),
         "TEMPLATED_runfiles_helper_script": _to_manifest_path(ctx, ctx.file._runfile_helpers_main),
         "TEMPLATED_vendored_node": "" if is_builtin else strip_external(ctx.file.node.path),
@@ -593,19 +599,21 @@ Predefined genrule variables are not supported in this context.
         default = Label("//internal/node:loader.js"),
         allow_single_file = True,
     ),
+    # not sure if node and toolchain are redundant might be easier to just use node and point references to toolchain there instead?
     "node": attr.label(
         # the default needs to change and it shouldn't be private so that it can be set by the user or a macro
         default = Label("@nodejs//:node_bin"),
         allow_single_file = True,
     ),
+    "toolchain": attr.label(),
     "_node_patches_script": attr.label(
         default = Label("//internal/node:node_patches.js"),
         allow_single_file = True,
     ),
-    "_repository_args": attr.label(
-        default = Label("@nodejs//:bin/node_repo_args.sh"),
-        allow_single_file = True,
-    ),
+    # "_repository_args": attr.label(
+    #     default = Label("@nodejs//:bin/node_repo_args.sh"),
+    #     allow_single_file = True,
+    # ),
     "_require_patch_template": attr.label(
         default = Label("//internal/node:require_patch.js"),
         allow_single_file = True,
@@ -640,6 +648,8 @@ nodejs_binary_kwargs = {
     "executable": True,
     "implementation": _nodejs_binary_impl,
     "outputs": _NODEJS_EXECUTABLE_OUTPUTS,
+    # these should be switched over to look like the other example in the multi repo
+    # these can be removed if you require toolchains to be specified
     "toolchains": [
         # what is the best way to resolve this
         "@build_bazel_rules_nodejs//toolchains/node:toolchain_type",
@@ -659,6 +669,30 @@ def nodejs_binary_macro(name, **kwargs):
         entry_point = maybe_directory_file_path(name, kwargs.pop("entry_point", None)),
         **kwargs
     )
+
+def nodejs_binary_toolchain_macro(name, toolchains = [], **kwargs):
+    """This extens nodejs binary and allows for multiple toolchains to be passed as a list and 
+    a target to be created for each one automatically
+    """
+    entry = maybe_directory_file_path(name, kwargs.pop("entry_point", None))
+    print(entry)
+    rule = 0
+
+    # Is there a good way to resolve the naming for the version chosen for each select statement?
+    # ideally able to produce the target name main_multiple_test_@node16_linux_amd64
+    # Is there a different outcome that would be better?
+    print(toolchains)
+    for toolchain in toolchains:
+        print(toolchain)
+        split = str(toolchain).split("//")
+        nodejs_binary(
+            name = "{name}_{toolchain}".format(name = name, toolchain = rule),  # split[0]
+            entry_point = entry,
+            node = toolchain,
+            toolchain = toolchain,
+            **kwargs
+        )
+        rule += 1
 
 nodejs_test_kwargs = dict(
     nodejs_binary_kwargs,
@@ -712,3 +746,25 @@ def nodejs_test_macro(name, **kwargs):
         entry_point = maybe_directory_file_path(name, kwargs.pop("entry_point", None)),
         **kwargs
     )
+
+def nodejs_binary_toolchain_test_macro(name, toolchains = [], **kwargs):
+    """This extens nodejs test and allows for multiple toolchains to be passed as a list and 
+    a target to be created for each one automatically
+    """
+    entry = maybe_directory_file_path(name, kwargs.pop("entry_point", None))
+    print(entry)
+    rule = 0
+
+    # Is there a good way to resolve the naming for the version chosen for each select statement?
+    # ideally able to produce the target name main_multiple_test_@node16_linux_amd64
+    # Is there a different outcome that would be better?
+    for toolchain in toolchains:
+        split = str(toolchain).split("//")
+        nodejs_test(
+            name = "{name}_{toolchain}".format(name = name, toolchain = rule),  # split[0]
+            entry_point = entry,
+            node = toolchain,
+            toolchain = toolchain,
+            **kwargs
+        )
+        rule += 1

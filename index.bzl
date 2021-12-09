@@ -27,6 +27,8 @@ load("//internal/js_library:js_library.bzl", _js_library = "js_library")
 load(
     "//internal/node:node.bzl",
     _nodejs_binary = "nodejs_binary_macro",
+    _nodejs_binary_toolchains = "nodejs_binary_toolchain_macro",
+    _nodejs_binary_toolchains_test = "nodejs_binary_toolchain_test_macro",
     _nodejs_test = "nodejs_test_macro",
 )
 load("//internal/node:node_repositories.bzl", _node_repositories = "node_repositories")
@@ -41,6 +43,8 @@ load(
 
 check_bazel_version = _check_bazel_version
 nodejs_binary = _nodejs_binary
+nodejs_binary_toolchains = _nodejs_binary_toolchains
+nodejs_binary_toolchains_test = _nodejs_binary_toolchains_test
 nodejs_test = _nodejs_test
 node_repositories = _node_repositories
 pkg_npm = _pkg_npm
